@@ -1,0 +1,25 @@
+# dataset & tokenizer artifacts
+hebrew_tokenized/
+hebrew_bpe_tokenizer.json
+hebrew_bpe-vocab.json
+hebrew_bpe-merges.txt
+
+# model checkpoints
+checkpoints/
+*.pt
+*.bin
+*.safetensors
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# jupyter
+.jupyter/
+
+# env
+.env
+ml_env/
+venv/
