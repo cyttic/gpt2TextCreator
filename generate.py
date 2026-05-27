@@ -1,15 +1,26 @@
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
-MODEL_ID = "dicta-il/dictalm2.0"
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+MODEL_PATH = "/mnt/ssd2/cyttic/models/dictalm2"
 
-print(f"Loading model {MODEL_ID} on {DEVICE}...")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-model = AutoModelForCausalLM.from_pretrained(MODEL_ID, torch_dtype=torch.float16)
-model.to(DEVICE)
+print(f"Loading model from {MODEL_PATH} (4-bit quantization)...")
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_compute_dtype=torch.float16,
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_quant_type="nf4",
+)
+
+model = AutoModelForCausalLM.from_pretrained(
+    MODEL_PATH,
+    quantization_config=bnb_config,
+    device_map="auto",          # places layers on GPU/CPU automatically
+)
 model.eval()
-print("Model loaded.\n")
+DEVICE = next(model.parameters()).device
+print(f"Model loaded on {DEVICE}.\n")
 
 def generate(prompt, max_new_tokens=100):
     inputs = tokenizer(prompt, return_tensors="pt").to(DEVICE)
