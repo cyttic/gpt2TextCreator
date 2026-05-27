@@ -10,14 +10,16 @@ from pathlib import Path
 MODEL_PATH     = "/mnt/ssd2/cyttic/models/dictalm2"
 OUTPUT_FILE    = "generated_hebrew.txt"
 N_SENTENCES    = 200
-MAX_NEW_TOKENS = 30       # 15 words ≈ 20-25 tokens, 30 gives a small buffer
+MAX_NEW_TOKENS = 22       # targets ~10 words (10 words × ~1.5 tok/word + buffer)
 BATCH_SIZE     = 32
 TARGET         = 1_000_000
 
 SYSTEM_PROMPT = (
-    "אתה עוזר שכותב אך ורק בעברית. "
+    "אתה סופר יצירתי שכותב אך ורק בעברית. "
+    "המשתמש יספק לך שתי מילים באנגלית — המשך מהן בצורה יצירתית וחופשית. "
+    "צור המשך מקורי, מעניין ומפתיע בעברית, כאילו שתי המילים הן תחילת סיפור או תמונה. "
     "חל איסור מוחלט להשתמש באנגלית או בכל שפה אחרת. "
-    "כתוב משפטים עבריים תקינים וקצרים בלבד."
+    "כתוב משפט עברי אחד בלבד."
 )
 
 # ── Load word dictionary ──────────────────────────────────────────────────────
@@ -80,30 +82,35 @@ def build_prompt(seed: str) -> str:
 # ── Hebrew-only filter ────────────────────────────────────────────────────────
 LATIN_RE = re.compile(r"[A-Za-z]")
 
-def is_hebrew_only(text: str) -> bool:
-    """Return True if the sentence contains no Latin/English characters."""
-    return not LATIN_RE.search(text)
-
-MAX_WORDS = 15
+MIN_WORDS = 3    # drop blank / near-blank outputs
+MAX_WORDS = 20   # soft cap — longer sentences are fine, just don't go wild
 
 def trim_to_sentence(text: str) -> str:
-    # Cut at first sentence boundary
-    for sep in [".", "!", "?", "\n"]:
+    # Cut at newline first (don't keep \n as part of the sentence)
+    if "\n" in text:
+        text = text.split("\n")[0]
+
+    # Cut at first sentence-ending punctuation
+    for sep in [".", "!", "?"]:
         if sep in text:
             text = text.split(sep)[0].strip() + sep
             break
-    else:
-        text = text.strip()
 
-    # Hard cap at MAX_WORDS words
+    text = text.strip()  # always clean trailing whitespace / stray \n
+
+    # Hard cap only for really long outputs
     words = text.split()
     if len(words) > MAX_WORDS:
         text = " ".join(words[:MAX_WORDS])
-        # add a period if the truncation removed the punctuation
         if text[-1] not in ".!?":
             text += "."
 
     return text
+
+def is_valid(text: str) -> bool:
+    """Not blank, not too short, no English."""
+    words = text.split()
+    return len(words) >= MIN_WORDS and not LATIN_RE.search(text)
 
 # ── Batch generation ──────────────────────────────────────────────────────────
 def generate_batch(seeds: list[str]) -> list[str]:
@@ -155,7 +162,7 @@ while len(sentences) < N_SENTENCES:
     total_generated += len(results)
 
     for r in results:
-        if is_hebrew_only(r) and r.strip():
+        if is_valid(r):
             sentences.append(r)
             if len(sentences) >= N_SENTENCES:
                 break
