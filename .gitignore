@@ -6,6 +6,7 @@ hebrew_bpe-merges.txt
 
 # model checkpoints
 checkpoints/
+models/
 *.pt
 *.bin
 *.safetensors
