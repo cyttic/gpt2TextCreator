@@ -108,9 +108,9 @@ def trim_to_sentence(text: str) -> str:
     return text
 
 def is_valid(text: str) -> bool:
-    """Not blank, not too short, no English."""
+    """Not blank, not too short, no English, no broken UTF-8 sequences."""
     words = text.split()
-    return len(words) >= MIN_WORDS and not LATIN_RE.search(text)
+    return len(words) >= MIN_WORDS and not LATIN_RE.search(text) and "�" not in text
 
 # ── Batch generation ──────────────────────────────────────────────────────────
 def generate_batch(seeds: list[str]) -> list[str]:
@@ -128,9 +128,9 @@ def generate_batch(seeds: list[str]) -> list[str]:
             **inputs,
             max_new_tokens=MAX_NEW_TOKENS,
             do_sample=True,
-            temperature=0.99,
-            top_k=50,
-            top_p=0.9,
+            temperature=1.05,
+            top_k=65,
+            top_p=0.91,
             repetition_penalty=1.3,
             pad_token_id=tokenizer.pad_token_id,
         )
